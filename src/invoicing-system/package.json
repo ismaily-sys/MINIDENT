@@ -1,0 +1,29 @@
+{
+  "name": "invoicing-system",
+  "version": "1.0.0",
+  "description": "A project for managing patient invoices and treatments.",
+  "main": "src/main.jsx",
+  "scripts": {
+    "start": "vite",
+    "build": "vite build",
+    "serve": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "supabase-js": "^2.0.0",
+    "vite": "^3.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^2.0.0"
+  },
+  "keywords": [
+    "invoicing",
+    "patients",
+    "treatments",
+    "react",
+    "supabase"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

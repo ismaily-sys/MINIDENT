@@ -1,0 +1,29 @@
+CREATE TABLE patients (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    phone VARCHAR(20),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE treatments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE invoices (
+    id SERIAL PRIMARY KEY,
+    patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+    total_amount DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE invoice_items (
+    id SERIAL PRIMARY KEY,
+    invoice_id INTEGER REFERENCES invoices(id) ON DELETE CASCADE,
+    treatment_id INTEGER REFERENCES treatments(id) ON DELETE CASCADE,
+    quantity INTEGER NOT NULL,
+    subtotal DECIMAL(10, 2) NOT NULL
+);
