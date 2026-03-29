@@ -2,19 +2,7 @@
 
 -- Users/Auth is handled by Supabase Auth
 
--- Profiles table (links users to clinics)
-CREATE TABLE IF NOT EXISTS profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  clinic_id UUID NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
-  full_name TEXT NOT NULL,
-  email TEXT NOT NULL,
-  role TEXT CHECK (role IN ('admin', 'assistant')) DEFAULT 'assistant',
-  avatar_url TEXT,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
--- Clinics table
+-- Clinics table (must be created BEFORE profiles due to FK dependency)
 CREATE TABLE IF NOT EXISTS clinics (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
@@ -31,6 +19,19 @@ CREATE TABLE IF NOT EXISTS clinics (
   subscription_status TEXT CHECK (subscription_status IN ('active', 'cancelled', 'expired')) DEFAULT 'active',
   max_users INTEGER DEFAULT 5,
   max_patients INTEGER DEFAULT 50,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Profiles table (links users to clinics)
+-- clinic_id is nullable to allow user creation before clinic setup
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  clinic_id UUID REFERENCES clinics(id) ON DELETE SET NULL,
+  full_name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  role TEXT CHECK (role IN ('admin', 'assistant')) DEFAULT 'assistant',
+  avatar_url TEXT,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -144,10 +145,17 @@ ALTER TABLE invoice_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clinic_activity_log ENABLE ROW LEVEL SECURITY;
 
 -- Helper function to get user's clinic_id
+-- SET search_path prevents search_path injection attacks on SECURITY DEFINER functions
 CREATE OR REPLACE FUNCTION get_my_clinic_id()
 RETURNS UUID AS $$
-SELECT clinic_id FROM profiles WHERE id = auth.uid()
-$$ LANGUAGE SQL SECURITY DEFINER;
+  SELECT clinic_id FROM profiles WHERE id = auth.uid()
+$$ LANGUAGE SQL SECURITY DEFINER SET search_path = public;
+
+-- Aggregate function: total revenue for a clinic (avoids full table scan client-side)
+CREATE OR REPLACE FUNCTION get_clinic_revenue(p_clinic_id UUID)
+RETURNS NUMERIC AS $$
+  SELECT COALESCE(SUM(total), 0) FROM invoices WHERE clinic_id = p_clinic_id
+$$ LANGUAGE SQL SECURITY DEFINER SET search_path = public;
 
 -- PROFILES policies
 CREATE POLICY "Users can view their own profile"
@@ -158,11 +166,19 @@ CREATE POLICY "Users can view profiles in their clinic"
 ON profiles FOR SELECT
 USING (clinic_id = get_my_clinic_id());
 
+CREATE POLICY "Users can insert their own profile"
+ON profiles FOR INSERT
+WITH CHECK (id = auth.uid());
+
 CREATE POLICY "Users can update their own profile"
 ON profiles FOR UPDATE
 USING (id = auth.uid());
 
 -- CLINICS policies
+CREATE POLICY "Authenticated users can create a clinic"
+ON clinics FOR INSERT
+WITH CHECK (auth.uid() IS NOT NULL);
+
 CREATE POLICY "Users can view their own clinic"
 ON clinics FOR SELECT
 USING (id = get_my_clinic_id());
@@ -200,7 +216,7 @@ USING (
   )
 );
 
--- APPOINTMENTS policies (similar to patients)
+-- APPOINTMENTS policies
 CREATE POLICY "Users can view appointments in their clinic"
 ON appointments FOR SELECT
 USING (clinic_id = get_my_clinic_id());
@@ -289,6 +305,40 @@ USING (
     SELECT 1 FROM invoices
     WHERE id = invoice_items.invoice_id
     AND clinic_id = get_my_clinic_id()
+  )
+);
+
+CREATE POLICY "Users can insert invoice items"
+ON invoice_items FOR INSERT
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM invoices
+    WHERE id = invoice_items.invoice_id
+    AND clinic_id = get_my_clinic_id()
+  )
+);
+
+CREATE POLICY "Users can update invoice items"
+ON invoice_items FOR UPDATE
+USING (
+  EXISTS (
+    SELECT 1 FROM invoices
+    WHERE id = invoice_items.invoice_id
+    AND clinic_id = get_my_clinic_id()
+  )
+);
+
+CREATE POLICY "Only admin can delete invoice items"
+ON invoice_items FOR DELETE
+USING (
+  EXISTS (
+    SELECT 1 FROM invoices
+    WHERE id = invoice_items.invoice_id
+    AND clinic_id = get_my_clinic_id()
+  ) AND
+  EXISTS (
+    SELECT 1 FROM profiles
+    WHERE id = auth.uid() AND role = 'admin'
   )
 );
 

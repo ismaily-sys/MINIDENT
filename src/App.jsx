@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
+import { ToastProvider } from './contexts/ToastContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 
@@ -13,10 +14,13 @@ import Appointments from './pages/Appointments';
 import Treatments from './pages/Treatments';
 import Invoices from './pages/Invoices';
 import Settings from './pages/Settings';
+import { ClinicSetupWizard } from './pages/Auth/ClinicSetupWizard';
+import { ClinicSettings } from './pages/Settings/ClinicSettings';
 
 function App() {
   return (
     <AuthProvider>
+      <ToastProvider>
       <Router>
         <Toaster
           position="top-right"
@@ -42,8 +46,9 @@ function App() {
           }}
         />
         <Routes>
-          {/* Public Route */}
+          {/* Public Routes */}
           <Route path="/login" element={<Login />} />
+          <Route path="/setup" element={<ClinicSetupWizard />} />
           
           {/* Protected Routes */}
           <Route element={
@@ -57,9 +62,11 @@ function App() {
             <Route path="/treatments" element={<Treatments />} />
             <Route path="/invoices" element={<Invoices />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/settings/clinic" element={<ClinicSettings />} />
           </Route>
         </Routes>
       </Router>
+      </ToastProvider>
     </AuthProvider>
   );
 }

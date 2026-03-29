@@ -127,6 +127,7 @@ export const AuthProvider = ({ children }) => {
 
   // Update profile
   const updateProfile = async (updates) => {
+    if (!user) throw new Error('User not authenticated');
     const { data, error } = await supabase
       .from('profiles')
       .update(updates)

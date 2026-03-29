@@ -7,15 +7,32 @@
 export interface Clinic {
   id: string;
   name: string;
+  description?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  postal_code?: string;
+  country?: string;
+  website?: string;
+  owner_id?: string;
+  subscription_plan?: 'free' | 'starter' | 'pro' | 'enterprise';
+  subscription_status?: 'active' | 'cancelled' | 'expired';
+  max_users?: number;
+  max_patients?: number;
   created_at: string;
+  updated_at: string;
 }
 
 export interface Profile {
   id: string;
-  clinic_id: string;
+  clinic_id: string | null;
   full_name: string | null;
+  email: string;
   role: 'admin' | 'assistant';
+  avatar_url?: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface Patient {
@@ -24,42 +41,47 @@ export interface Patient {
   name: string;
   phone: string | null;
   email: string | null;
+  date_of_birth?: string | null;
+  address?: string | null;
+  city?: string | null;
+  postal_code?: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface Appointment {
   id: string;
   clinic_id: string;
   patient_id: string;
-  date: string;  // timestamp with time zone
-  status: 'pending' | 'completed' | 'cancelled';
+  appointment_date: string;
+  status: 'scheduled' | 'completed' | 'cancelled';
   notes: string | null;
   created_at: string;
+  updated_at: string;
   // Joined data
   patient?: Patient;
 }
 
 export interface DentalCode {
-  code: string;  // PRIMARY KEY - no id field
+  code: string;
+  clinic_id: string;
   description: string;
   category: string | null;
-  default_price: number | null;
+  notes: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface Treatment {
   id: string;
   clinic_id: string;
-  patient_id: string;
-  appointment_id: string | null;
-  code: string | null;  // References dental_codes.code
-  description: string;
-  price: number;
+  code: string;
+  name: string;
+  description?: string | null;
+  cost: number | null;
+  duration_minutes?: number | null;
   created_at: string;
-  // Joined data
-  patient?: Patient;
-  dental_code?: DentalCode;
-  appointment?: Appointment;
+  updated_at: string;
 }
 
 export interface Invoice {
@@ -70,6 +92,7 @@ export interface Invoice {
   status: 'unpaid' | 'paid' | 'cancelled';
   notes: string | null;
   created_at: string;
+  updated_at: string;
   // Joined data
   patient?: Patient;
   items?: InvoiceItem[];
@@ -78,9 +101,9 @@ export interface Invoice {
 export interface InvoiceItem {
   id: string;
   invoice_id: string;
-  treatment_id: string | null;
-  description: string;
+  treatment_code: string;
   price: number;
+  quantity: number;
   created_at: string;
 }
 
@@ -96,18 +119,17 @@ export interface PatientFormData {
 
 export interface AppointmentFormData {
   patient_id: string;
-  date: string;      // ISO date string: '2024-01-15'
-  time: string;      // Time string: '14:30'
-  status?: 'pending' | 'completed' | 'cancelled';
+  appointment_date: string;
+  status?: 'scheduled' | 'completed' | 'cancelled';
   notes?: string;
 }
 
 export interface TreatmentFormData {
-  patient_id: string;
-  appointment_id?: string;
-  code: string;      // Dental code reference
-  description: string;
-  price: number;
+  code: string;
+  name: string;
+  description?: string;
+  cost?: number;
+  duration_minutes?: number;
 }
 
 export interface InvoiceFormData {
@@ -117,9 +139,9 @@ export interface InvoiceFormData {
 }
 
 export interface InvoiceItemFormData {
-  treatment_id?: string;
-  description: string;
+  treatment_code: string;
   price: number;
+  quantity?: number;
 }
 
 // ============================================
@@ -134,9 +156,13 @@ export interface AuthContextType {
   profile: Profile | null;
   clinic: Clinic | null;
   loading: boolean;
+  isAuthenticated: boolean;
+  isAdmin: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
+  updateProfile: (updates: Partial<Profile>) => Promise<Profile>;
+  updateClinic: (updates: Partial<Clinic>) => Promise<Clinic>;
 }
 
 // ============================================
@@ -159,6 +185,13 @@ export interface PaginatedResponse<T> {
 // Dashboard Stats Types
 // ============================================
 
+export interface ClinicStats {
+  patients: number;
+  appointments: number;
+  users: number;
+  revenue: number;
+}
+
 export interface DashboardStats {
   totalPatients: number;
   todayAppointments: number;
@@ -168,25 +201,25 @@ export interface DashboardStats {
 
 export interface TodayAppointment extends Appointment {
   patient: Patient;
-  time: string;  // Extracted time for display
 }
 
 // ============================================
 // Utility Types
 // ============================================
 
-export type AppointmentStatus = 'pending' | 'completed' | 'cancelled';
+export type AppointmentStatus = 'scheduled' | 'completed' | 'cancelled';
 export type InvoiceStatus = 'unpaid' | 'paid' | 'cancelled';
 export type UserRole = 'admin' | 'assistant';
+export type SubscriptionPlan = 'free' | 'starter' | 'pro' | 'enterprise';
 
 // Type for creating new records (omit auto-generated fields)
-export type CreatePatientInput = Omit<Patient, 'id' | 'clinic_id' | 'created_at'>;
-export type CreateAppointmentInput = Omit<Appointment, 'id' | 'clinic_id' | 'created_at'>;
-export type CreateTreatmentInput = Omit<Treatment, 'id' | 'clinic_id' | 'created_at'>;
-export type CreateInvoiceInput = Omit<Invoice, 'id' | 'clinic_id' | 'created_at'>;
+export type CreatePatientInput = Omit<Patient, 'id' | 'clinic_id' | 'created_at' | 'updated_at'>;
+export type CreateAppointmentInput = Omit<Appointment, 'id' | 'clinic_id' | 'created_at' | 'updated_at'>;
+export type CreateTreatmentInput = Omit<Treatment, 'id' | 'clinic_id' | 'created_at' | 'updated_at'>;
+export type CreateInvoiceInput = Omit<Invoice, 'id' | 'clinic_id' | 'created_at' | 'updated_at'>;
 
 // Type for updating records (make fields optional)
 export type UpdatePatientInput = Partial<CreatePatientInput>;
-export type UpdateAppointmentInput = Partial<Omit<Appointment, 'id' | 'clinic_id' | 'patient_id' | 'created_at'>>;
-export type UpdateTreatmentInput = Partial<Omit<Treatment, 'id' | 'clinic_id' | 'created_at'>>;
-export type UpdateInvoiceInput = Partial<Omit<Invoice, 'id' | 'clinic_id' | 'created_at'>>;
+export type UpdateAppointmentInput = Partial<Omit<Appointment, 'id' | 'clinic_id' | 'patient_id' | 'created_at' | 'updated_at'>>;
+export type UpdateTreatmentInput = Partial<Omit<Treatment, 'id' | 'clinic_id' | 'created_at' | 'updated_at'>>;
+export type UpdateInvoiceInput = Partial<Omit<Invoice, 'id' | 'clinic_id' | 'created_at' | 'updated_at'>>;

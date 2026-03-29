@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useClinic } from '@/hooks/useClinic'
 import { useForm } from '@/hooks/useForm'
 import { LoadingButton } from '@/components/LoadingButton'
 import { Skeleton } from '@/components/Skeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { canManage, isAdmin } from '@/utils/permissions'
-import { useAuth } from '@/context/AuthContext'
+import { useAuth } from '@/contexts/AuthContext'
 
 export const ClinicSettings = () => {
   const { profile } = useAuth()
@@ -13,25 +13,30 @@ export const ClinicSettings = () => {
   const [activeTab, setActiveTab] = useState<'general' | 'team' | 'subscription'>('general')
   const [showAddTeamModal, setShowAddTeamModal] = useState(false)
 
-  // General settings form
+  // General settings form — always provide defaults to avoid uncontrolled input warnings
   const generalForm = useForm(
-    clinic
-      ? {
-          name: clinic.name,
-          email: clinic.email || '',
-          phone: clinic.phone || '',
-          address: clinic.address || '',
-          city: clinic.city || '',
-          postal_code: clinic.postal_code || '',
-          website: clinic.website || '',
-        }
-      : {},
+    {
+      name: clinic?.name ?? '',
+      email: clinic?.email ?? '',
+      phone: clinic?.phone ?? '',
+      address: clinic?.address ?? '',
+      city: clinic?.city ?? '',
+      postal_code: clinic?.postal_code ?? '',
+      website: clinic?.website ?? '',
+    },
     async values => {
       if (clinic) {
         await updateClinic(clinic.id, values)
       }
     }
   )
+
+  // Reset form values when clinic data loads
+  useEffect(() => {
+    if (clinic) {
+      generalForm.reset()
+    }
+  }, [clinic?.id])
 
   // Add team member form
   const teamForm = useForm(

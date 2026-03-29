@@ -46,7 +46,7 @@ export const ClinicSetupWizard = () => {
     })
 
     if (clinic) {
-      navigate('/dashboard')
+      navigate('/')
     }
   })
 

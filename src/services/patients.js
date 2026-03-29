@@ -52,12 +52,14 @@ export const patientsService = {
    */
   async search(clinicId, query) {
     if (!clinicId) throw new Error('clinicId is required');
-    
+
+    const sanitized = String(query).replace(/[%_,()'"`]/g, '');
+
     const { data, error } = await supabase
       .from('patients')
       .select('*')
       .eq('clinic_id', clinicId)
-      .or(`name.ilike.%${query}%,phone.ilike.%${query}%,email.ilike.%${query}%`)
+      .or(`name.ilike.%${sanitized}%,phone.ilike.%${sanitized}%,email.ilike.%${sanitized}%`)
       .order('name', { ascending: true })
       .limit(20);
     

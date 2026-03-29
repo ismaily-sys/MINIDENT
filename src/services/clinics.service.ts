@@ -1,24 +1,7 @@
-import { supabase } from '@/lib/supabaseClient'
+import { supabase } from '@/lib/supabase'
+import type { Clinic } from '@/lib/types'
 
-export interface Clinic {
-  id: string
-  name: string
-  description?: string
-  phone?: string
-  email?: string
-  address?: string
-  city?: string
-  postal_code?: string
-  country?: string
-  website?: string
-  owner_id?: string
-  subscription_plan?: 'free' | 'starter' | 'pro' | 'enterprise'
-  subscription_status?: 'active' | 'cancelled' | 'expired'
-  max_users?: number
-  max_patients?: number
-  created_at: string
-  updated_at: string
-}
+export type { Clinic }
 
 /**
  * Clinic Service - Manage clinics in the system
@@ -117,20 +100,18 @@ export const clinicsService = {
    * Get clinic statistics
    */
   async getClinicStats(clinicId: string) {
-    const [patientsRes, appointmentsRes, usersRes, invoicesRes] = await Promise.all([
+    const [patientsRes, appointmentsRes, usersRes, revenueRes] = await Promise.all([
       supabase.from('patients').select('*', { count: 'exact', head: true }).eq('clinic_id', clinicId),
       supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('clinic_id', clinicId),
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('clinic_id', clinicId),
-      supabase.from('invoices').select('total', { head: false }).eq('clinic_id', clinicId),
+      supabase.rpc('get_clinic_revenue', { p_clinic_id: clinicId }),
     ])
-
-    const totalRevenue = invoicesRes.data?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0
 
     return {
       patients: patientsRes.count || 0,
       appointments: appointmentsRes.count || 0,
       users: usersRes.count || 0,
-      revenue: totalRevenue,
+      revenue: (revenueRes.data as number) || 0,
     }
   },
 
@@ -166,10 +147,9 @@ export const clinicsService = {
    * Remove team member
    */
   async removeTeamMember(clinicId: string, userId: string) {
-    // Delete user's profile from clinic
     const { error } = await supabase
       .from('profiles')
-      .delete()
+      .update({ clinic_id: null })
       .eq('clinic_id', clinicId)
       .eq('id', userId)
 
