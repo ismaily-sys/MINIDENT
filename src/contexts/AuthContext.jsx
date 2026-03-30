@@ -29,6 +29,7 @@ export const AuthProvider = ({ children }) => {
 
       if (profileError) throw profileError;
       if (!isMounted.current) return;
+
       setProfile(profileData);
 
       if (profileData?.clinic_id) {
@@ -40,11 +41,13 @@ export const AuthProvider = ({ children }) => {
 
         if (clinicError) throw clinicError;
         if (!isMounted.current) return;
+
         setClinic(clinicData);
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
       if (!isMounted.current) return;
+
       setProfile(null);
       setClinic(null);
     }
@@ -53,6 +56,38 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     isMounted.current = true;
 
+    // 🔥 1. تحميل الجلسة مباشرة عند بداية التطبيق
+    const initAuth = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error('Session error:', error);
+        }
+
+        const currentUser = data?.session?.user ?? null;
+
+        if (!isMounted.current) return;
+
+        setUser(currentUser);
+
+        if (currentUser) {
+          await fetchUserData(currentUser.id);
+        } else {
+          setProfile(null);
+          setClinic(null);
+        }
+      } catch (err) {
+        console.error('Init auth error:', err);
+      } finally {
+        // 🔥 يمنع التعليق مهما حدث
+        if (isMounted.current) setLoading(false);
+      }
+    };
+
+    initAuth();
+
+    // 🔥 2. الاستماع لتغيرات auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!isMounted.current) return;
@@ -65,10 +100,6 @@ export const AuthProvider = ({ children }) => {
         } else {
           setProfile(null);
           setClinic(null);
-        }
-
-        if (isMounted.current) {
-          setLoading(false);
         }
       }
     );
@@ -103,6 +134,7 @@ export const AuthProvider = ({ children }) => {
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
+
     setUser(null);
     setProfile(null);
     setClinic(null);
@@ -110,26 +142,32 @@ export const AuthProvider = ({ children }) => {
 
   const updateProfile = async (updates) => {
     if (!user) throw new Error('User not authenticated');
+
     const { data, error } = await supabase
       .from('profiles')
       .update(updates)
       .eq('id', user.id)
       .select()
       .single();
+
     if (error) throw error;
+
     setProfile(data);
     return data;
   };
 
   const updateClinic = async (updates) => {
     if (!clinic) throw new Error('No clinic associated with user');
+
     const { data, error } = await supabase
       .from('clinics')
       .update(updates)
       .eq('id', clinic.id)
       .select()
       .single();
+
     if (error) throw error;
+
     setClinic(data);
     return data;
   };
