@@ -30,7 +30,10 @@ const Treatments = () => {
 
   // Load treatments
   const loadTreatments = useCallback(async () => {
-    if (!clinic?.id) return;
+    if (!clinic?.id) {
+      setLoading(false);
+      return;
+    }
     
     try {
       setLoading(true);

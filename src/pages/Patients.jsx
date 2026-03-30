@@ -24,7 +24,10 @@ const Patients = () => {
 
   // Load patients
   const loadPatients = useCallback(async () => {
-    if (!clinic?.id) return;
+    if (!clinic?.id) {
+      setLoading(false);
+      return;
+    }
     
     try {
       setLoading(true);

@@ -28,7 +28,10 @@ const Appointments = () => {
 
   // Load appointments for selected date
   const loadAppointments = useCallback(async () => {
-    if (!clinic?.id) return;
+    if (!clinic?.id) {
+      setLoading(false);
+      return;
+    }
     
     try {
       setLoading(true);

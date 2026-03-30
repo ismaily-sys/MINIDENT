@@ -30,7 +30,10 @@ const Invoices = () => {
 
   // Load invoices
   const loadInvoices = useCallback(async () => {
-    if (!clinic?.id) return;
+    if (!clinic?.id) {
+      setLoading(false);
+      return;
+    }
     
     try {
       setLoading(true);

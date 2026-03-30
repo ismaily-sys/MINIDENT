@@ -24,6 +24,8 @@ const Dashboard = () => {
   useEffect(() => {
     if (clinic?.id) {
       loadDashboardData();
+    } else {
+      setLoading(false);
     }
   }, [clinic?.id]);
 

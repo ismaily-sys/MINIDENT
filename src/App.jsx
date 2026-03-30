@@ -51,18 +51,16 @@ function App() {
           <Route path="/setup" element={<ClinicSetupWizard />} />
           
           {/* Protected Routes */}
-          <Route element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/patients" element={<Patients />} />
-            <Route path="/appointments" element={<Appointments />} />
-            <Route path="/treatments" element={<Treatments />} />
-            <Route path="/invoices" element={<Invoices />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/settings/clinic" element={<ClinicSettings />} />
+          <Route element={<ProtectedRoute />}>
+            <Route element={<Layout />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/patients" element={<Patients />} />
+              <Route path="/appointments" element={<Appointments />} />
+              <Route path="/treatments" element={<Treatments />} />
+              <Route path="/invoices" element={<Invoices />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/settings/clinic" element={<ClinicSettings />} />
+            </Route>
           </Route>
         </Routes>
       </Router>
