@@ -8,10 +8,6 @@ import Input from '../components/ui/Input';
 import Modal, { ModalFooter } from '../components/ui/Modal';
 import Table from '../components/ui/Table';
 
-/**
- * Patients Page
- * List, search, and manage patients
- */
 const Patients = () => {
   const { clinic } = useAuth();
   const [patients, setPatients] = useState([]);
@@ -20,15 +16,14 @@ const Patients = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState(null);
   const [formData, setFormData] = useState({ name: '', phone: '', email: '' });
+  const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load patients
   const loadPatients = useCallback(async () => {
     if (!clinic?.id) {
       setLoading(false);
       return;
     }
-    
     try {
       setLoading(true);
       const data = await patientsService.getAll(clinic.id);
@@ -45,11 +40,9 @@ const Patients = () => {
     loadPatients();
   }, [loadPatients]);
 
-  // Search patients
   const handleSearch = async (query) => {
     setSearchQuery(query);
     if (!clinic?.id) return;
-    
     if (query.trim()) {
       try {
         const results = await patientsService.search(clinic.id, query);
@@ -62,14 +55,13 @@ const Patients = () => {
     }
   };
 
-  // Open modal for new patient
   const handleAddPatient = () => {
     setEditingPatient(null);
     setFormData({ name: '', phone: '', email: '' });
+    setErrors({});
     setIsModalOpen(true);
   };
 
-  // Open modal for editing
   const handleEditPatient = (patient) => {
     setEditingPatient(patient);
     setFormData({
@@ -77,47 +69,60 @@ const Patients = () => {
       phone: patient.phone || '',
       email: patient.email || '',
     });
+    setErrors({});
     setIsModalOpen(true);
   };
 
-  // Save patient (create or update)
+  const validate = () => {
+    const next = {};
+    if (!formData.name.trim()) next.name = 'Le nom est requis';
+    if (!formData.phone.trim()) next.phone = 'Le téléphone est requis';
+    return next;
+  };
+
   const handleSavePatient = async (e) => {
     e.preventDefault();
-    if (!clinic?.id) return;
-    
-    if (!formData.name.trim()) {
-      toast.error('Le nom est requis');
+
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
       return;
     }
-    
+
+    if (!clinic?.id) {
+      toast.error('Clinique non trouvée. Rechargez la page et réessayez.');
+      return;
+    }
+
     try {
       setSaving(true);
-      
+      console.log('Submitting patient:', formData);
+
       if (editingPatient) {
-        // Update existing patient
-        await patientsService.update(clinic.id, editingPatient.id, formData);
+        const updated = await patientsService.update(clinic.id, editingPatient.id, formData);
+        console.log('Patient updated:', updated);
         toast.success('Patient mis à jour');
       } else {
-        // Create new patient
-        await patientsService.create(clinic.id, formData);
-        toast.success('Patient créé');
+        const created = await patientsService.create(clinic.id, formData);
+        console.log('Patient created:', created);
+        toast.success('Patient créé avec succès');
       }
-      
+
       setIsModalOpen(false);
+      setFormData({ name: '', phone: '', email: '' });
+      setErrors({});
       loadPatients();
     } catch (error) {
       console.error('Error saving patient:', error);
-      toast.error('Erreur lors de la sauvegarde');
+      toast.error(error?.message || 'Erreur lors de la sauvegarde');
     } finally {
       setSaving(false);
     }
   };
 
-  // Delete patient
   const handleDeletePatient = async (patient) => {
     if (!clinic?.id) return;
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer ${patient.name}?`)) return;
-    
+    if (!confirm(`Supprimer ${patient.name} ?`)) return;
     try {
       await patientsService.delete(clinic.id, patient.id);
       toast.success('Patient supprimé');
@@ -128,17 +133,16 @@ const Patients = () => {
     }
   };
 
-  // Table columns
   const columns = [
     {
       header: 'Nom',
       accessor: 'name',
-      render: (value, row) => (
+      render: (value) => (
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-            <User size={18} className="text-primary" />
+          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <User size={16} className="text-primary" />
           </div>
-          <span className="font-medium">{value}</span>
+          <span className="font-medium text-on-surface">{value}</span>
         </div>
       ),
     },
@@ -146,49 +150,39 @@ const Patients = () => {
       header: 'Téléphone',
       accessor: 'phone',
       render: (value) => value ? (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 text-on-surface">
           <Phone size={14} className="text-secondary" />
           <span>{value}</span>
         </div>
-      ) : (
-        <span className="text-secondary">-</span>
-      ),
+      ) : <span className="text-secondary">—</span>,
     },
     {
       header: 'Email',
       accessor: 'email',
       render: (value) => value ? (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 text-on-surface">
           <Mail size={14} className="text-secondary" />
           <span>{value}</span>
         </div>
-      ) : (
-        <span className="text-secondary">-</span>
-      ),
+      ) : <span className="text-secondary">—</span>,
     },
     {
       header: 'Actions',
       accessor: 'id',
       render: (_, row) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
             icon={Edit2}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEditPatient(row);
-            }}
+            onClick={(e) => { e.stopPropagation(); handleEditPatient(row); }}
           />
           <Button
             variant="ghost"
             size="sm"
             icon={Trash2}
             className="text-error hover:bg-error/10"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDeletePatient(row);
-            }}
+            onClick={(e) => { e.stopPropagation(); handleDeletePatient(row); }}
           />
         </div>
       ),
@@ -197,7 +191,6 @@ const Patients = () => {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-display font-bold text-on-surface">Patients</h1>
@@ -208,7 +201,6 @@ const Patients = () => {
         </Button>
       </div>
 
-      {/* Search */}
       <div className="max-w-md">
         <Input
           icon={Search}
@@ -218,7 +210,6 @@ const Patients = () => {
         />
       </div>
 
-      {/* Patients Table */}
       <div className="bg-surface-container-lowest rounded-2xl overflow-hidden">
         <Table
           columns={columns}
@@ -228,45 +219,92 @@ const Patients = () => {
         />
       </div>
 
-      {/* Add/Edit Modal */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => { setIsModalOpen(false); setErrors({}); }}
         title={editingPatient ? 'Modifier le patient' : 'Nouveau patient'}
-        size="md"
+        size="sm"
       >
-        <form onSubmit={handleSavePatient}>
+        <form onSubmit={handleSavePatient} noValidate>
           <div className="space-y-4">
-            <Input
-              label="Nom complet"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Dr. Jean Dupont"
-              required
-            />
-            <Input
-              label="Téléphone"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              placeholder="+212 6XX XXX XXX"
-              type="tel"
-            />
-            <Input
-              label="Email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="email@exemple.com"
-              type="email"
-            />
+            <div>
+              <label className="block text-sm font-medium text-on-surface mb-1.5">
+                Nom complet <span className="text-error">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value });
+                  if (errors.name) setErrors({ ...errors, name: undefined });
+                }}
+                placeholder="Mohamed Alami"
+                autoFocus
+                className={`w-full px-4 py-3 rounded-xl bg-surface-container-low border text-on-surface placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${
+                  errors.name ? 'border-error focus:ring-error' : 'border-outline-variant'
+                }`}
+              />
+              {errors.name && (
+                <p className="mt-1 text-xs text-error">{errors.name}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-on-surface mb-1.5">
+                Téléphone <span className="text-error">*</span>
+              </label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => {
+                  setFormData({ ...formData, phone: e.target.value });
+                  if (errors.phone) setErrors({ ...errors, phone: undefined });
+                }}
+                placeholder="+212 6XX XXX XXX"
+                className={`w-full px-4 py-3 rounded-xl bg-surface-container-low border text-on-surface placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${
+                  errors.phone ? 'border-error focus:ring-error' : 'border-outline-variant'
+                }`}
+              />
+              {errors.phone && (
+                <p className="mt-1 text-xs text-error">{errors.phone}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-on-surface mb-1.5">
+                Email <span className="text-secondary font-normal text-xs">(optionnel)</span>
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="email@exemple.com"
+                className="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant text-on-surface placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+              />
+            </div>
           </div>
-          
+
           <ModalFooter>
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+            <button
+              type="button"
+              onClick={() => { setIsModalOpen(false); setErrors({}); }}
+              className="px-4 py-2 text-sm font-medium rounded-lg border border-outline-variant text-secondary hover:bg-surface-container-low transition-colors"
+            >
               Annuler
-            </Button>
-            <Button type="submit" loading={saving}>
-              {editingPatient ? 'Mettre à jour' : 'Créer'}
-            </Button>
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-5 py-2 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            >
+              {saving && (
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+              )}
+              {saving ? 'Enregistrement...' : editingPatient ? 'Mettre à jour' : 'Créer'}
+            </button>
           </ModalFooter>
         </form>
       </Modal>
