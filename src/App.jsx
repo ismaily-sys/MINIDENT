@@ -6,6 +6,7 @@ import { ToastProvider } from './contexts/ToastContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 
+// Existing clinic pages
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Patients = lazy(() => import('./pages/Patients'));
@@ -19,6 +20,11 @@ const ClinicSetupWizard = lazy(() =>
 const ClinicSettings = lazy(() =>
   import('./pages/Settings/ClinicSettings').then((m) => ({ default: m.ClinicSettings }))
 );
+
+// MMS Pages
+const MMSLayout = lazy(() => import('./mms/components/MMSLayout'));
+const Scenarios = lazy(() => import('./mms/pages/Scenarios'));
+const Executions = lazy(() => import('./mms/pages/Executions'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[60vh]">
@@ -56,6 +62,7 @@ function App() {
           />
           <Suspense fallback={<PageLoader />}>
             <Routes>
+              {/* Clinic Routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/setup" element={<ClinicSetupWizard />} />
 
@@ -70,6 +77,10 @@ function App() {
                   <Route path="/settings/clinic" element={<ClinicSettings />} />
                 </Route>
               </Route>
+
+              {/* MMS Routes - Independent Simulation System */}
+              <Route path="/mms" element={<MMSLayout><Scenarios /></MMSLayout>} />
+              <Route path="/mms/executions" element={<MMSLayout><Executions /></MMSLayout>} />
             </Routes>
           </Suspense>
         </Router>
